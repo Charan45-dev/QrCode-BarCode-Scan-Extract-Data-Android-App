@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -80,6 +81,8 @@ android {
     namespace "com.scannerx"
     defaultConfig {
         applicationId "com.scannerx"
+        missingDimensionStrategy 'react-native-camera', 'general'
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
