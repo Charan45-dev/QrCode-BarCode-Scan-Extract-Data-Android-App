@@ -3,40 +3,44 @@ import { TextInput, Button, Text, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { getRealm } from './Database';
 import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+
+type FormData = {
+  username: string;
+  password: string;
+};
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const navigation = useNavigation();
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [error, setError] = useState('');
-  const navigation = useNavigation();
 
-  const handleLogin = async () => {
-    const trimmedUsername = username.trim();
-    const trimmedPassword = password.trim();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
 
-    if (!trimmedUsername || !trimmedPassword) {
-      setError('Please enter both username and password');
-      return;
-    }
+  const onSubmit = async (data: FormData) => {
+    const { username, password } = data;
     setError('');
 
     try {
       const realm = await getRealm();
-      const user = realm.objects('User').filtered('username == $0', trimmedUsername)[0];
+      const user = realm.objects('User').filtered('username == $0', username.trim())[0];
 
       if (!user) {
         setError('User not found');
         return;
       }
 
-      if (user.password === trimmedPassword) {
+      if (user.password === password.trim()) {
         navigation.navigate('Home' as never);
       } else {
         setError('Invalid password');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (err) {
+      console.error('Login error:', err);
       setError('Failed to login. Please try again.');
     }
   };
@@ -47,30 +51,58 @@ const Login = () => {
         Login
       </Text>
 
-      <TextInput
-        label="Username"
-        mode="outlined"
-        style={styles.input}
-        value={username}
-        onChangeText={setUsername}
-        left={<TextInput.Icon icon="account" />}
-      />
-
-      <TextInput
-        label="Password"
-        mode="outlined"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={secureTextEntry}
-        left={<TextInput.Icon icon="lock" />}
-        right={
-          <TextInput.Icon 
-            icon={secureTextEntry ? "eye-off" : "eye"} 
-            onPress={() => setSecureTextEntry(!secureTextEntry)} 
+      <Controller
+        control={control}
+        rules={{ required: 'Username is required' }}
+        name="username"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextInput
+            label="Username"
+            mode="outlined"
+            style={styles.input}
+            value={value}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            left={<TextInput.Icon icon="account" />}
+            error={!!errors.username}
           />
-        }
+        )}
       />
+      {errors.username && (
+        <HelperText type="error" visible={true}>
+          {errors.username.message}
+        </HelperText>
+      )}
+
+      <Controller
+        control={control}
+        rules={{ required: 'Password is required' }}
+        name="password"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextInput
+            label="Password"
+            mode="outlined"
+            style={styles.input}
+            value={value}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            secureTextEntry={secureTextEntry}
+            left={<TextInput.Icon icon="lock" />}
+            right={
+              <TextInput.Icon
+                icon={secureTextEntry ? 'eye-off' : 'eye'}
+                onPress={() => setSecureTextEntry(!secureTextEntry)}
+              />
+            }
+            error={!!errors.password}
+          />
+        )}
+      />
+      {errors.password && (
+        <HelperText type="error" visible={true}>
+          {errors.password.message}
+        </HelperText>
+      )}
 
       {error ? (
         <HelperText type="error" visible={!!error}>
@@ -78,9 +110,9 @@ const Login = () => {
         </HelperText>
       ) : null}
 
-      <Button 
-        mode="contained" 
-        onPress={handleLogin}
+      <Button
+        mode="contained"
+        onPress={handleSubmit(onSubmit)}
         style={styles.button}
         icon="login"
       >
@@ -89,8 +121,8 @@ const Login = () => {
 
       <View style={styles.footer}>
         <Text variant="bodyMedium">Don't have an account?</Text>
-        <Button 
-          mode="text" 
+        <Button
+          mode="text"
           onPress={() => navigation.navigate('Register' as never)}
           textColor="#6200ee"
         >
