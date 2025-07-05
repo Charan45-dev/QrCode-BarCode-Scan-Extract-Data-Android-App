@@ -1,16 +1,10 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {StyleSheet, FlatList, View} from 'react-native';
-import {List, Button, Text, ActivityIndicator} from 'react-native-paper';
-import {
-  CommonActions,
-  RouteProp,
-  useFocusEffect,
-  useNavigation,
-  useRoute,
-} from '@react-navigation/native';
-import {getRealm} from './Database';
+import React, { useState, useEffect, useRef } from 'react';
+import {StyleSheet,FlatList,View,Linking,TouchableOpacity,} from 'react-native';
+import { List, Button, Text, ActivityIndicator } from 'react-native-paper';
+import {CommonActions,RouteProp,useFocusEffect,useNavigation,useRoute,} from '@react-navigation/native';
+import { getRealm } from './Database';
 import Realm from 'realm';
-import {RootStackParamList} from './types';
+import { RootStackParamList } from './types';
 
 interface ScannedItem {
   _id: Realm.BSON.ObjectId;
@@ -24,7 +18,6 @@ const ScannedData = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ Typed route
   const route = useRoute<RouteProp<RootStackParamList, 'ScannedData'>>();
   const navigation = useNavigation();
   const lastProcessedRef = useRef<string | null>(null);
@@ -52,8 +45,6 @@ const ScannedData = () => {
 
     try {
       const realm = await getRealm();
-
-      // ✅ Prevent duplicate entries
       const existing = realm
         .objects<ScannedItem>('ScannedData')
         .filtered('data == $0', data);
@@ -96,12 +87,11 @@ const ScannedData = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadData();
-    }, []),
+    }, [])
   );
 
   useEffect(() => {
-    const {data, label} = route.params || {};
-
+    const { data, label } = route.params || {};
     if (isProcessing || !data || !label || lastProcessedRef.current === data) {
       return;
     }
@@ -116,7 +106,7 @@ const ScannedData = () => {
             CommonActions.setParams({
               data: undefined,
               label: undefined,
-            }),
+            })
           );
         }
       } catch (error) {
@@ -129,24 +119,41 @@ const ScannedData = () => {
     saveScan();
   }, [route.params]);
 
-  const renderItem = ({item}: {item: ScannedItem}) => (
+  // ✅ Utility to check if data is a valid URL
+  const isValidUrl = (text: string) => {
+    const pattern = /^(https?:\/\/)[\w.-]+\.[\w]{2,}(\/\S*)?$/i;
+    return pattern.test(text);
+  };
+
+  const renderItem = ({ item }: { item: ScannedItem }) => (
     <List.Item
-      title={item.data}
+      title={() =>
+        isValidUrl(item.data) ? (
+          <TouchableOpacity onPress={() => Linking.openURL(item.data)}>
+            <Text style={{ color: '#1e88e5', textDecorationLine: 'underline' }}>
+              {item.data}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text>{item.data}</Text>
+        )
+      }
       description={`${item.type} • ${new Date(
-        item.createdAt,
+        item.createdAt
       ).toLocaleString()}`}
-      left={props => (
+      left={(props) => (
         <List.Icon
           {...props}
           icon={item.type.includes('QR') ? 'qrcode' : 'barcode'}
         />
       )}
-      right={props => (
+      right={(props) => (
         <Button
           mode="text"
           onPress={() => deleteItem(item._id)}
           icon="delete"
-          textColor="#d32f2f">
+          textColor="#d32f2f"
+        >
           Delete
         </Button>
       )}
@@ -169,7 +176,7 @@ const ScannedData = () => {
         <FlatList
           data={scannedItems}
           renderItem={renderItem}
-          keyExtractor={item => item._id.toString()}
+          keyExtractor={(item) => item._id.toString()}
         />
       ) : (
         <Text style={styles.emptyText}>No scanned items yet</Text>
